@@ -23,6 +23,4 @@ jobs:
           FILTER_MODE: hot
           FETCH_NUMBER: 20
           GITHUB_CACHE_PATH: push_state.json
-        run: |
-          cd aigupiao-feishu-push
-          python aigupiao_feishu_push.py --once
+        run: python aigupiao_feishu_push.py --once
