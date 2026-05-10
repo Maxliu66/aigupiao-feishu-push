@@ -8,33 +8,21 @@ on:
 jobs:
   push-news:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-
-      - name: Restore push state cache
-        uses: actions/cache@v4
+      - uses: actions/cache@v4
         with:
           path: push_state.json
           key: aigupiao-push-state-v1
-
       - name: Run push script
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           FILTER_MODE: hot
           FETCH_NUMBER: 20
           GITHUB_CACHE_PATH: push_state.json
-                run: |
+        run: |
           cd aigupiao-feishu-push
           python aigupiao_feishu_push.py --once
-
-
-      - name: Save push state
-        if: always()
-        run: echo "Push state saved"
