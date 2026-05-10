@@ -23,8 +23,6 @@ jobs:
         with:
           path: push_state.json
           key: aigupiao-push-state-v1
-          restore-keys: |
-            aigupiao-push-state-v1
 
       - name: Run push script
         env:
