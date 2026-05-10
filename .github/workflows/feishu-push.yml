@@ -30,7 +30,10 @@ jobs:
           FILTER_MODE: hot
           FETCH_NUMBER: 20
           GITHUB_CACHE_PATH: push_state.json
-        run: python aigupiao_feishu_push.py --once
+                run: |
+          cd aigupiao-feishu-push
+          python aigupiao_feishu_push.py --once
+
 
       - name: Save push state
         if: always()
