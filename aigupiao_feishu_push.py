@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
-爱股票 → 飞书推送服务
-从 apis.aigupiao.com/Express/express_list/ 抓取重点要闻，增量推送到飞书群机器人
+财经快讯 → 飞书推送服务
+增量推送重点要闻到飞书群机器人
 
 功能：
-- 每5分钟轮询爱股票快讯API
-- 过滤重要要闻（important=yes / app_push=yes）
+- 定时轮询快讯数据源
+- 过滤重要要闻
 - 增量去重，已推送的不再重复
 - 推送飞书群机器人webhook
 - 状态持久化（本地JSON文件 或 GitHub Actions Cache）
@@ -37,21 +37,22 @@ STATE_FILE = Path(__file__).parent / "push_state.json"
 GITHUB_CACHE_PATH = os.environ.get("GITHUB_CACHE_PATH", "")
 
 # 要闻过滤模式：
-#   "important"  - 仅推送 important=yes 或 app_push=yes 的要闻
-#   "all"        - 推送所有要闻（较多）
-#   "app_push"   - 仅推送 app_push=yes 的要闻（最少，最核心）
+#   "app_push"   - 仅推送 app_push=yes 的要闻（最少，最核心，3-5条/天）
+#   "important"  - 推送 important=yes 或 app_push=yes 或 important_db=yes（5-10条/天）
+#   "hot"        - 推送 24h热门 或 important 或 app_push（10-20条/天）
+#   "broad"      - hot + important_db + 阅读量>5000（30-50条/天，推荐）
+#   "all"        - 推送所有要闻（100+条/天，刷屏警告）
 FILTER_MODE = os.environ.get("FILTER_MODE", "hot")
 
 # 每次获取条数
 FETCH_NUMBER = int(os.environ.get("FETCH_NUMBER", "20"))
 
-# ============== API ==============
+# ============== 数据源 ==============
 
-EXPRESS_LIST_URL = "https://apis.aigupiao.com/Express/express_list/"
+EXPRESS_LIST_URL = os.environ.get("DATA_SRC_URL", "")
 
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Referer": "https://stock.aigupiao.com/",
     "Accept": "application/json",
 }
 
@@ -127,6 +128,18 @@ def filter_important_news(items, mode="important"):
         elif mode == "hot":
             if is_24h_hot or is_important or is_app_push:
                 filtered.append(item)
+        elif mode == "broad":
+            if (is_24h_hot or is_important or is_app_push
+                    or is_important_db):
+                filtered.append(item)
+            else:
+                # 阅读量超5000的高热度快讯
+                try:
+                    view_num = int(item.get("view_num", "0"))
+                except (ValueError, TypeError):
+                    view_num = 0
+                if view_num >= 5000:
+                    filtered.append(item)
 
     return filtered
 
@@ -195,11 +208,6 @@ def build_feishu_card(news_item):
     view_num = news_item.get("view_num", "0")
     detail_url = news_item.get("url", f"https://mobile.aigupiao.com/express/detail/id/{news_id}")
 
-    # 判断重要级别
-    is_app_push = news_item.get("app_push") == "yes"
-    is_important = news_item.get("important") == "yes"
-    level_tag = "🔴 重要推送" if is_app_push else ("🟠 重要" if is_important else "📰 要闻")
-
     # 内容分行：在【】标记后换行，在逗号/句号后适当换行增加可读性
     content = format_content_lines(content)
 
@@ -210,9 +218,9 @@ def build_feishu_card(news_item):
             "header": {
                 "title": {
                     "tag": "plain_text",
-                    "content": f"{level_tag} | {rec_time_desc}",
+                    "content": f"{rec_time_desc}",
                 },
-                "template": "red" if is_app_push else ("orange" if is_important else "blue"),
+                "template": "blue",
             },
             "elements": [
                 {
