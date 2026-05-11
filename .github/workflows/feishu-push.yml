@@ -20,7 +20,7 @@ jobs:
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
           DATA_SRC_URL: ${{ secrets.DATA_SRC_URL }}
-          FILTER_MODE: hot
+          FILTER_MODE: all
           FETCH_NUMBER: 20
           GITHUB_CACHE_PATH: push_state.json
         run: python aigupiao_feishu_push.py --once
