@@ -13,14 +13,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - uses: actions/cache@v4
-        with:
-          path: push_state.json
-          key: aigupiao-push-state-v1
       - name: Run push script
         env:
           FEISHU_WEBHOOK_URL: ${{ secrets.FEISHU_WEBHOOK_URL }}
+          DATA_SRC_URL: ${{ secrets.DATA_SRC_URL }}
           FILTER_MODE: hot
           FETCH_NUMBER: 20
           GITHUB_CACHE_PATH: push_state.json
         run: python aigupiao_feishu_push.py --once
+      - name: Commit push state
+        if: always()
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add push_state.json
+          git diff --staged --quiet || git commit -m "Update push state"
+          git push
